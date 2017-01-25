@@ -45,7 +45,7 @@
 		
 			canPreventGestureRecognizer:
 			canBePreventedByGestureRecognizer:
-		方法，这样的 prevent 就会使单向的
+		方法，这样的 prevent 就会是单向的
 	* 组织一个手势识别器分析触摸
 		
 		可以通过向手势识别器添加 delegate 来改变手势识别器的行为，可以使用如下的两个可选的 delegate 方法来组织一个手势识别器分析触摸：
@@ -55,3 +55,31 @@
 		gestureRecognizer:shouldReceiveTouch: 会在每次有新触摸的时候被调用
 		如果你需要越长越好的时间来确定一个手势识别器是否应该分析触摸，使用gestureRecognizerShouldBegin:方法，这个方法将会在手势识别器的由 possible 状态转换到其他状态时被调用。也可以使用 UIView 的 gestureRecognizerShouldBegin: 方法（当 view 或者 view controller 不能成为 delegate 时）
 		
+9. 一个多点触控事件是由类型为 UIEventTypeTouches 的 UIEvent 来表示的。当手指运动时，iOS 将 UITouch 对象传递给这个 event。
+10. 一个 UITouch 对象代表了一个手指，当手指运动时，UIKit 会追踪这个手指并改变 UITouch 对象的属性（触摸阶段、在视图中的位置、先前的位置、时间戳等）。
+	触摸阶段是由 UITouch 对象的 phase 属性来保存的。
+	
+	![多点触摸序列和触摸阶段](https://developer.apple.com/library/content/documentation/EventHandling/Conceptual/EventHandlingiPhoneOS/Art/event_touch_time_2x.png)
+
+11. 默认的触摸事件传递路径：当一个触摸发生时，这个 touch 对象由 UIApplication 对象传递到 UIWindow 对象。然后window对象在将这些 touch 对象集合发送给这个触摸发生的视图之前，首先将这些touch 对象集合发送给触摸发生的视图（或者其父视图）上附着的任何手势识别器。
+
+	![默认的触摸事件传递路径](https://developer.apple.com/library/content/documentation/EventHandling/Conceptual/EventHandlingiPhoneOS/Art/path_of_touches_2x.png)
+
+	触摸的消息序列：
+	![触摸的消息序列](https://developer.apple.com/library/content/documentation/EventHandling/Conceptual/EventHandlingiPhoneOS/Art/recognize_touch_2x.png)
+	
+12. [手势的3个容易混淆的属性 cancelsTouchesInView/delaysTouchesBegan/delaysTouchesEnded:](http://blog.csdn.net/fys_0801/article/details/50605837)		
+13. 创建自定义的手势识别
+	1. 创建 UIGestureRecognizer 的子类，在子类的 .h 文件中加入 `#import <UIKit/UIGestureRecognizerSubclass.h>`这句
+
+	2. 在 .h 文件中加入如下的方法声明：
+	
+			- (void)reset;
+			- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event;
+			- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event;
+			- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event;
+			- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event;
+		在每个方法的实现中，都要调用父类的实现。
+	3. 实现上述的几个方法，在实现的时候，最重要的是正确、合适的设置自定义的手势识别器的 state 属性。
+	
+	详细细节请查阅：[WWDC 2012: Building Advanced Gesture Recognizers.](https://developer.apple.com/videos/play/wwdc2012/233/)
