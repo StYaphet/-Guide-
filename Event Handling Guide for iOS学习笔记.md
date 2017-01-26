@@ -1,5 +1,5 @@
 #Event Handling Guide for iOS
-1. iOS中的事件：事件是一个被发送给app，用以通知app用户动作的对象。许多事件都是UIEvent类的实例。每一个事件对象都有一个类型
+1. iOS中的事件：事件是一个被发送给 app，用以通知 app 用户动作的对象。许多事件都是 UIEvent 类的实例。每一个事件对象都有一个类型
 2. iOS中内置的手势识别： 
 
   手势| UIKitClass
@@ -40,7 +40,7 @@
 			gestureRecognizer:shouldBeRequiredToFailByGestureRecognizer:
 	* 允许两个手势识别器同时运行
 		
-		实现 UIGestureRecognizerDelegate 的 gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer: 方法
+		实现 `UIGestureRecognizerDelegate` 的 `gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:` 方法
 		指定两手势识别器之间单向的关系，使用：
 		
 			canPreventGestureRecognizer:
@@ -53,7 +53,7 @@
 			gestureRecognizer:shouldReceiveTouch:
 			gestureRecognizerShouldBegin:
 		gestureRecognizer:shouldReceiveTouch: 会在每次有新触摸的时候被调用
-		如果你需要越长越好的时间来确定一个手势识别器是否应该分析触摸，使用gestureRecognizerShouldBegin:方法，这个方法将会在手势识别器的由 possible 状态转换到其他状态时被调用。也可以使用 UIView 的 gestureRecognizerShouldBegin: 方法（当 view 或者 view controller 不能成为 delegate 时）
+		如果你需要越长越好的时间来确定一个手势识别器是否应该分析触摸，使用`gestureRecognizerShouldBegin:`方法，这个方法将会在手势识别器的由 possible 状态转换到其他状态时被调用。也可以使用 UIView 的 `gestureRecognizerShouldBegin:` 方法（当 view 或者 view controller 不能成为 delegate 时）
 		
 9. 一个多点触控事件是由类型为 UIEventTypeTouches 的 UIEvent 来表示的。当手指运动时，iOS 将 UITouch 对象传递给这个 event。
 10. 一个 UITouch 对象代表了一个手指，当手指运动时，UIKit 会追踪这个手指并改变 UITouch 对象的属性（触摸阶段、在视图中的位置、先前的位置、时间戳等）。
@@ -83,3 +83,31 @@
 	3. 实现上述的几个方法，在实现的时候，最重要的是正确、合适的设置自定义的手势识别器的 state 属性。
 	
 	详细细节请查阅：[WWDC 2012: Building Advanced Gesture Recognizers.](https://developer.apple.com/videos/play/wwdc2012/233/)
+	
+14. 当用户产生了一个事件（event），UIKit 创建一个对象，这个对象包含处理这个事件所需要的信息，然后将这个信息当前活动的 app 的事件队列。
+15. 事件将沿一条特定的路径传递，直到传递到一个可以处理它的对象。首先，UIApplication 单例对象将会从队列的首部取一个事件将其分发出去进行处理。通常，这个事件将会被分发到 app 的主窗口（key window），它将事件传递个一个初始对象进行处理。这个初始对象取决于事件（event）的类型。
+
+	* 触摸事件：对于触摸事件，窗口对象会将其首先传递到触摸发生的视图，这个视图叫做 hit-test view。寻找 hit-test view 的处理被称作 hit-testing。
+	* 运动和远程控制事件：对于这些事件，主窗口会将晃动事件或远程控制事件分发给第一响应者进行处理。
+
+16. hit-testing内部机制： iOS 使用 Hit-testing 来找出触摸是在哪个视图发生的。hit-testing 需要检查一个触摸是否是在相关的视图对象的边界之内，如果是在这个视图的边界之内，还要递归的对这个视图的所有子视图进行检查。在视图层级中包含这个触摸点的层级最低的视图就叫做 hit-testing view。
+17. `hitTest:withEvent:` 通过给定的 CGPint 和 UIEvent 来返回hit-testing view。`hitTest:withEvent:` 开始会调用 `pointInside:withEvent:` 方法，如果传入给 `hitTest:withEvent:` 方法的 CGPoint 在视图的边界之内，`pointInside:withEvent:` 返回 YES。然后这个方法会在这个视图的每个返回 YES 的子视图上递归的调用 `hitTest:withEvent:` 方法。
+18. 响应者链从第一响应者开始，到 application 对象结束。响应对象是UIResponder 的子类的实例。UIView 是 responder 对象，CALayer 不是 responder 对象。
+19. 一个对象想要成为第一响应者需要做如下的事情：
+	* 覆写 `canBecomeFirstResponder` 方法，返回 YES
+	* 接受  `becomeFirstResponder` 方法，如果需要的话，一个对象可以自己向自己发送这个方法。
+	通常会在覆写的 `viewDidAppear:` 方法中调用 `becomeFirstResponder` 方法。
+20. 事件不是唯一依赖于响应者链的对象。响应者链还用下以下的地方：
+	* Motion events（运动事件）：为与 UIKit 一起处理晃动事件，第一响应者必须实现 UIResponder 类的 `motionBegan:withEvent:` 或 `motionEnded:withEvent:` 方法
+	* Touch events(触摸事件)
+	* Remote control events（远程控制事件）：为处理远程控制事件，第一响应者必须实现 UIResponder 类的 `remoteControlReceivedWithEvent: ` 方法
+	* Action messages：当用户操作一个控件，并且动作的目标（Target）是`nil`，这个消息将被传递到由第一响应者开始的响应者链（第一响应者可以是控件本身）
+	* Editing-menu messages：当用户点击编辑菜单的命令，iOS 使用响应者链来寻找实现了需要方法的对象（比如：`copy:`、`cut:`、`paste:`）
+	* Text editing：当用户点击 text field 或 text view，这个视图将会自动成为第一响应者。默认情况下，将会弹出虚拟键盘，你可以使用一个自定义的输入空间来代替这个虚拟键盘。你也可以向任何响应者对象添加自定义的输入视图。
+	
+	UIKit 会在用户点击 text field 或 text view 的时候令其自动成为第一响应者，app 必须调用 `becomeFirstResponder` 方法来设置其他第一响应者对象。
+
+1. iOS 中的响应者链：
+	![iOS 中的响应者链](https://developer.apple.com/library/content/documentation/EventHandling/Conceptual/EventHandlingiPhoneOS/Art/iOS_responder_chain_2x.png)
+	
+	不要直接向 nextResponder 发送消息，调用父类的该事件处理方法，让 UIKit 处理事件在响应者链中的传递。
